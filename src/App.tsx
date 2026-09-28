@@ -9,8 +9,9 @@ import {
   MessageSquare, 
   Database, 
   Cpu, 
-  CheckCircle2, 
-  Flame, 
+  CheckCircle2,
+  CircleAlert,
+  Flame,
   ArrowRight,
   Code2,
   Server
@@ -25,17 +26,21 @@ export function App() {
     { cmd: 'help', out: 'Available commands: about, stack, vibes, ara, contact, clear' }
   ]);
   const [vibeStats, setVibeStats] = useState({ totalProjects: 5, totalStars: 588, avgScore: '98.8' });
+  const [databaseStatus, setDatabaseStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   useEffect(() => {
     async function loadStats() {
       try {
-        const { data } = await supabase.from('vibes').select('vibe_score, stars');
+        const { data, error } = await supabase.from('vibes').select('vibe_score, stars');
+        if (error) throw error;
+        setDatabaseStatus('connected');
         if (data && data.length > 0) {
           const stars = data.reduce((acc, v) => acc + (v.stars || 0), 0);
           const avg = (data.reduce((acc, v) => acc + (v.vibe_score || 0), 0) / data.length).toFixed(1);
           setVibeStats({ totalProjects: data.length, totalStars: stars, avgScore: avg });
         }
       } catch (e) {
+        setDatabaseStatus('error');
         console.error('Error fetching stats', e);
       }
     }
@@ -172,8 +177,21 @@ export function App() {
           </div>
           <div className="p-4 rounded-2xl bg-[#11111a] border border-slate-800/80">
             <span className="text-xs text-slate-400 font-mono">Database Status</span>
-            <div className="text-xs font-mono text-emerald-400 mt-2 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" /> Supabase Connected
+            <div
+              role="status"
+              aria-live="polite"
+              className={`text-xs font-mono mt-2 flex items-center gap-1.5 ${
+                databaseStatus === 'connected' ? 'text-emerald-400' : databaseStatus === 'error' ? 'text-rose-400' : 'text-slate-400'
+              }`}
+            >
+              {databaseStatus === 'connected' ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : databaseStatus === 'error' ? (
+                <CircleAlert className="w-4 h-4" />
+              ) : (
+                <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              )}
+              {databaseStatus === 'connected' ? 'Supabase Connected' : databaseStatus === 'error' ? 'Supabase Unavailable' : 'Checking Supabase…'}
             </div>
           </div>
         </div>
